@@ -1,9 +1,9 @@
-import json
-from tinydb import TinyDB, Query, where
-from unidecode import unidecode
-import re
-from time import sleep
+from   tinydb    import TinyDB, Query, where
+from   unidecode import unidecode
+from   time      import sleep
+
 import sys
+import re
 # TODO
 
 TODO = {
@@ -54,22 +54,21 @@ TODO = {
             
         "infinity":"nothing"
         }
-
 # foundation
 
 "regexp to match single syllables, for splitting words into syllables"
 #syllable = re.compile(r'[^q]{0,2}[aeiouy][aeiouy]?q?', re.IGNORECASE)
 #syllable = re.compile(r'[cs]?[^q]{0,2}[aeiouy][aeiouy]?q?', re.IGNORECASE)
 
-syllable = r'[cs]?' # c in ch, s in sh
+syllable  = r'[cs]?'      # c in ch, s in sh
 syllable += r'[^q]{0,2}' # starting letter (and h in ch, sh)
-syllable += r'[aeiouy]' # starting vowel
+syllable += r'[aeiouy]'  # starting vowel
 syllable += r'[aeiouy]?' # optional second vowel
-syllable += r'q?' # optional ending q
-syllable = re.compile(syllable, re.IGNORECASE)
+syllable += r'q?'        # optional ending q
+syllable  = re.compile(syllable, re.IGNORECASE)
 
 "load the database"
-tq = TinyDB("td.json")
+tq   = TinyDB("td.json")
 word = Query()
 
 # Dumb, uneccesary, ignorable
