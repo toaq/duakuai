@@ -61,10 +61,10 @@ TODO = {
 #syllable = re.compile(r'[cs]?[^q]{0,2}[aeiouy][aeiouy]?q?', re.IGNORECASE)
 
 syllable  = r'[cs]?'      # c in ch, s in sh
-syllable += r'[^q]{0,2}' # starting letter (and h in ch, sh)
-syllable += r'[aeiouy]'  # starting vowel
-syllable += r'[aeiouy]?' # optional second vowel
-syllable += r'q?'        # optional ending q
+syllable += r'[^q]{0,2}'  # starting letter (and h in ch, sh)
+syllable += r'[aeiouy]'   # starting vowel
+syllable += r'[aeiouy]?'  # optional second vowel
+syllable += r'q?'         # optional ending q
 syllable  = re.compile(syllable, re.IGNORECASE)
 
 "load the database"
@@ -105,13 +105,15 @@ def chop(val, regexp=syllable):
     """
     return re.findall(regexp, unidecode(val))
 
-def ordena(db, field, palabra):
-    """list of entries, sorted by field.
+def ordena(entry_list, field, sylla):
+    """list of entries, sorted by field from the value of sylla
+
+    If sylla is empty, sort by dictionary order, with phrases after words.
 
     Sorting order:
-    1) the palabra is a single menaingful syllable, start with the palabra
-    2) has the palabra, but does not start 
-    3) the palabra is a substring of another syllable
+    1) the sylla is a single meaningful syllable, start with the sylla
+    2) has the sylla, but does not start 
+    3) the sylla is a substring of another syllable
     4) the reference is a sentence of more than one word.
 
     1) ma, mara, mahi, mama
@@ -120,20 +122,31 @@ def ordena(db, field, palabra):
     4) Dua mama ma jai be da. Kaqgai baq gama rao si a daqmoa poho da.
     """
     def _sortBy(dck):
+	"""Give each entry a sorting value: [number, entry].
+
+	While sorting, the number will be considered before the entry,
+	letting me organize words by a category before using their dictionary order.
+
+	dck: a dictionary entry, a python dictionary with key:value pairs
+	field: which key's value will be used for sorting
+	reference: the value for sorting
+	chp: list of syllables in this entry's value
+	"""
         reference = dck[field]
         chp = chop(reference)
         if len(reference.split()) > 1:
             num = 4
-        elif palabra in chp:
-            if palabra == chp[0]:
+        elif sylla in chp:
+            if sylla == chp[0]:
                 num = 1
             else:
                 num = 2
         else:
             num = 3
-        #print(num, palabra, chp)
+        #print(num, sylla, chp)
+	# return its type value, followed by its syllables
         return [num, chp]
-    return sorted(list(db), key=_sortBy)
+    return sorted(list(entry_list), key=_sortBy)
 
 # query list, data base
 # query list: [[logic, field, value, test], ... ]
