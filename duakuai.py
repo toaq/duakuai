@@ -3,6 +3,57 @@ from tinydb import TinyDB, Query, where
 from unidecode import unidecode
 import re
 from time import sleep
+import sys
+# TODO
+
+TODO = {
+        1:["recursive word search",
+            "not done",
+            "given a compound word, return 1. its definition, 2. the definitions of all the rhythms of its syllables",
+            "heigaheu -> heiga, gaheu -> hei, ga, heu"],
+        2:["intuitive flags",
+            "not done",
+            "the flags right not follow the names of the fields in td.json. They should move to intuitive names",
+            "-h becomes -w (not head, but word)"],
+        3:["multi json search",
+            "not done",
+            "keep multiple json files to search words, each an independent dictionary",
+            "like, td.json and dictionary.json from hoemai's new dictionary",
+            "the intuitive flags would work better with this, because each dictionary woudl have different names for the same field"],
+        3.1:["flag map",
+            "not done",
+            "map intuitive flags with each field in its corresponding database automatically"],
+        4:["help",
+            "not done",
+            "document how to use the app, print the documentation on call",
+            ":q help should return the flags usable, what each flag does, and where they break",
+            "as would :q help -hr"],
+        5:["distributed app",
+            "not done",
+            "make the thing run in several computers, so we don't need a server but we still have the bot as long as one host is logged in"],
+        6:["format indent",
+            "not done",
+            "given any number of sentences, format them in nesting style. ask zeokueqche, he made up the style.",
+            "ok, so, basically, all verbs are upper case, and their argyments are nested like python expressions. isnt it neat? :D"]
+        7:["whole document gloss",
+            "not done",
+            "translate every toaq word in an arbitrarily long document into its one word gloss.",
+            "a gloss is a one word translation, hoemai has them in his new and ~improved~ dictionary. I think they are a good idea."],
+        8:["unicode regexp search",
+            "not done",
+            "search using full unicode, with dotless i and tone marks and all that.",
+            "probalby useful if we keep lots of sentences as examples"],
+        9:["sentence database!",
+            "not done",
+            "keep toaq sentences in a separate database",
+            "would make search easier to code, and cull unnecessary results",
+            "maybe a new table would work better?... NAH! ALL THE DATABASES ARE BELONG TO US!!"],
+
+
+
+            
+        "infinity":"nothing"
+        }
 
 # foundation
 
@@ -21,25 +72,18 @@ syllable = re.compile(syllable, re.IGNORECASE)
 tq = TinyDB("td.json")
 word = Query()
 
-def substr(val, target):
-    """Dumb, Find entry with target as substring"""
-    return target in val
+# Dumb, uneccesary, ignorable
+# these functions I made long before I had any idea what I was doing,
+# they are not used in the rest of the code, but they might be useful for debugging.
+# just ignore them
 
 def reTest(val, target=syllable):
     """Dumb Test, true if it fits into toaq syllable structure."""
     return target.match(unidecode(val))
 
-def chop(val, regexp=syllable):
-    """Split a word into syllables."""
-    return re.findall(regexp, unidecode(val))
-
 def unary():
     """Dumb Test, return all entries that match toaq syllables."""
     return tq.search(word.head.test(reTest))
-
-def sk(test, target):
-    """Find all that match the target through the test."""
-    return tq.search(word.head.test(test, target))
 
 def extract_symbols():
     """Dumb, get all unique symbols in the database for the words."""
@@ -48,7 +92,19 @@ def extract_symbols():
     _small = sorted(list(set([a for a in "".join(_words)])))
     return _small
 
+def sk(test, target):
+    """Find all that match the target through the test."""
+    return tq.search(word.head.test(test, target))
+
 # dictionary better
+
+def chop(val, regexp=syllable):
+    """Split a word into syllables.
+
+    This is useful because most syllables in toaq mean something,
+    and that informs the meaning of the compound word.
+    """
+    return re.findall(regexp, unidecode(val))
 
 def ordena(db, field, palabra):
     """list of entries, sorted by field.
@@ -102,7 +158,6 @@ def compressQuery(qlist):
     lst = [[l, where(f).test(t, v)] for l, f, v, t in qlist]
     lst = _reorder(lst)
 
-    # TODO make the first logic count, discount the last
     def _compress(qlist):
         null, first = lst.pop(0)
         #print(null, first)
@@ -199,7 +254,7 @@ def results(db, number):
         display(entry)
 
 def display_single_entry(entry):
-    orden = ["head", "frame", "body", "apropos", "notes", "score"]
+    orden = ["head", "frame", "body", "apropos", "notes", "score", "user"]
     intermedio = {}
     for i in orden:
         if i in entry:
@@ -214,6 +269,8 @@ def display_single_entry(entry):
                 #f"\tapropos:\t{intermedio['apropos']}\n",
                 #f"\tnotes:\t{intermedio['notes']}\n",
                 #f"\tscore:\t{intermedio['score']}\n"
+                f"\tuser:\t{intermedio['user']}\n"
+                
                 ""
                 ])
     return parte
@@ -406,3 +463,8 @@ aqlist = [
         ['and', 'body', 'predicate', lambda f, v: v in f],
         ['or', 'user', 'spreadsheet', lambda f, v: re.compile(v).match(f)]
         ]
+
+
+if __name__ == "__main__":
+    print(main(sys.argv[1]))
+    
