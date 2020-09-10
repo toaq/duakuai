@@ -34,7 +34,7 @@ TODO = {
         6:["format indent",
             "not done",
             "given any number of sentences, format them in nesting style. ask zeokueqche, he made up the style.",
-            "ok, so, basically, all verbs are upper case, and their argyments are nested like python expressions. isnt it neat? :D"]
+            "ok, so, basically, all verbs are upper case, and their argyments are nested like python expressions. isnt it neat? :D"],
         7:["whole document gloss",
             "not done",
             "translate every toaq word in an arbitrarily long document into its one word gloss.",
@@ -54,6 +54,19 @@ TODO = {
             
         "infinity":"nothing"
         }
+
+# Glossary
+
+Glossary = \
+"""consult: apply a qlist to a db
+qlist: a list of queries, only useful after compression.
+compress: turn a qlist into a single query
+syllable: a toaq syllable, often a root word with a definition. That is, semantically relevant.
+palabra, word: the value being searched
+db, database: a list of entries, or the original dictionary of entries as read from the json
+entry: a single entry in the dictionary, a set of fields that describe a word and its properties.
+"""
+
 # foundation
 
 "regexp to match single syllables, for splitting words into syllables"
@@ -69,12 +82,13 @@ syllable  = re.compile(syllable, re.IGNORECASE)
 
 "load the database"
 tq   = TinyDB("td.json")
-word = Query()
 
 # Dumb, uneccesary, ignorable
 # these functions I made long before I had any idea what I was doing,
 # they are not used in the rest of the code, but they might be useful for debugging.
 # just ignore them
+
+dumb_query = Query()
 
 def reTest(val, target=syllable):
     """Dumb Test, true if it fits into toaq syllable structure."""
@@ -82,7 +96,7 @@ def reTest(val, target=syllable):
 
 def unary():
     """Dumb Test, return all entries that match toaq syllables."""
-    return tq.search(word.head.test(reTest))
+    return tq.search(dumb_query.head.test(reTest))
 
 def extract_symbols():
     """Dumb, get all unique symbols in the database for the words."""
@@ -93,9 +107,9 @@ def extract_symbols():
 
 def sk(test, target):
     """Find all that match the target through the test."""
-    return tq.search(word.head.test(test, target))
+    return tq.search(dumb_query.head.test(test, target))
 
-# dictionary better
+# order results
 
 def chop(val, regexp=syllable):
     """Split a word into syllables.
@@ -109,6 +123,10 @@ def ordena(entry_list, field, sylla):
     """list of entries, sorted by field from the value of sylla
 
     If sylla is empty, sort by dictionary order, with phrases after words.
+    
+    sylla: syllable by which to order words
+    field: the field in the entry list that will be compared with sylla
+    entry_list: the list of entries to be sorted.
 
     Sorting order:
     1) the sylla is a single meaningful syllable, start with the sylla
@@ -122,16 +140,16 @@ def ordena(entry_list, field, sylla):
     4) Dua mama ma jai be da. Kaqgai baq gama rao si a daqmoa poho da.
     """
     def _sortBy(dck):
-	"""Give each entry a sorting value: [number, entry].
+        """Give each entry a sorting value: [number, entry].
 
-	While sorting, the number will be considered before the entry,
-	letting me organize words by a category before using their dictionary order.
+        While sorting, the number will be considered before the entry,
+        letting me organize words by a category before using their dictionary order.
 
-	dck: a dictionary entry, a python dictionary with key:value pairs
-	field: which key's value will be used for sorting
-	reference: the value for sorting
-	chp: list of syllables in this entry's value
-	"""
+        dck: a dictionary entry, a python dictionary with key:value pairs
+        field: which key's value will be used for sorting
+        reference: the value for sorting
+        chp: list of syllables in this entry's value
+        """
         reference = dck[field]
         chp = chop(reference)
         if len(reference.split()) > 1:
@@ -144,10 +162,11 @@ def ordena(entry_list, field, sylla):
         else:
             num = 3
         #print(num, sylla, chp)
-	# return its type value, followed by its syllables
+        # return its type value, followed by its syllables
         return [num, chp]
     return sorted(list(entry_list), key=_sortBy)
 
+# examples of query list
 # query list, data base
 # query list: [[logic, field, value, test], ... ]
 
@@ -158,9 +177,20 @@ aqlist = [
         ['or', 'user', 'spreadsheet', lambda f, v: re.compile(v).match(f)]
         ]
 
+bqlist = [
+        ['empty', 'head', 'kuo', ssrch],
+        ['and', 'body', 'predicate', simple_substring],
+        ['or', 'user', 'Ilmen', equality]
+        ]
+
 
 def compressQuery(qlist):
-    """Join all queries into one GigaQuery."""
+    """Join all queries into one GigaQuery.
+
+    How does it work?
+    first,  reverse the queries in the query list
+    second, fuse all the queries by nesting them, from rightmost to leftmost, like a b c d -> (a (b (c d)))
+    """
     # the hierarchy of the qlist is: the further left you are, the higher priority you are
     # this does not fit with the application of query, so the list must be reversed appropriately
 
@@ -185,15 +215,24 @@ def compressQuery(qlist):
     return _compress(lst)
 
 def consult(qlist, db):
+    """Apply the query of the compressed qlist onto the db."""
     uberQuery = compressQuery(qlist)
     return db.search(uberQuery)
 
 # organize by meaningful syllable
 # TODO organize by more than one syllable
-# sort consult
+# sort consult, or cyllable consult
 def sconsult(qlist, db=tq):
-    """Only searches for one head, not or-ing many. useful for sorting by sillable. TODO."""
-    # get the head from the qlist, not extra from palabra
+    """Consult the compressed qlist onto the db, sorting them by the syllable order.
+
+    I wanna sort the results by syllable, because syllables have meaning,
+    and that way all words related to one another come together.
+    But, if there are more than one meaningful syllable in the query,
+    I don't know how to sort it.
+    So, if there is only one word searched, we sort by that word.
+    If there is more than one, sort by naive dictionary order,
+    by passing to 'ordena' an empty 'sylla'
+    """
     cnt = 0
     give_head = ""
     for q in qlist:
@@ -462,19 +501,6 @@ def main(cliString):
 
 
 
-
-
-bqlist = [
-        ['empty', 'head', 'kuo', ssrch],
-        ['and', 'body', 'predicate', simple_substring],
-        ['or', 'user', 'Ilmen', equality]
-        ]
-
-aqlist = [
-        ['empty', 'head', 'mui', lambda f, v: re.compile(v).match(f)], 
-        ['and', 'body', 'predicate', lambda f, v: v in f],
-        ['or', 'user', 'spreadsheet', lambda f, v: re.compile(v).match(f)]
-        ]
 
 
 if __name__ == "__main__":
