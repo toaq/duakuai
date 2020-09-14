@@ -390,7 +390,7 @@ def display_succint(entry):
         if field in entry:
             out =  entry[field]
         elif field in ['type', 'frame', 'distribution']:
-            out =  "___"
+            out =  "---"
         else:
             out = ""
         return out
@@ -583,7 +583,7 @@ def main(cliString):
     if res:
         ret = display_all_entries(res)
     else:
-        ret = "unknown function"
+        ret = "mistery error number 69 :3"
     return ret
 
 
