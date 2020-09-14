@@ -43,6 +43,7 @@ help,
 distributed app,
     not done,
     make the thing run in several computers, so we don't need a server but we still have the bot as long as one host is logged in,
+    maybe done automatically by discord? connect two instances of the bot: one in the tower, one in the cellphone
 format indent,
     not done,
     given any number of sentences, format them in nesting style. ask zeokueqche, he made up the style.,
@@ -129,7 +130,7 @@ toaduaDic = {
     "distribution":"",
     "namesake":"",
     "examples":"",
-    "fields":""
+    "fields":"",
     }
 
 hoemaiDic = {
@@ -151,6 +152,13 @@ hoemaiDic = {
     "fields":"fields"
 }
 
+rvsDict  = {v:k for k, v in (list(toaduaDic.items()) + list(hoemaiDic.items())) if v}
+
+def translate_query_from_db(query):
+    return {rvsDict[k]:v for k, v in query.items() if k in rvsDict}
+
+def translate_qlist(qlist):
+    return [translate_query_from_db(q) for q in qlist]
 
 #tq   = TinyDB("td.json")
 tqa  = AdaptibleDB("td.json", toaduaDic)
@@ -349,7 +357,10 @@ def results(db, number):
         display(entry)
 
 def display_single_entry(entry):
-    """Return string that represents entry with discord structure."""
+    """Return string that represents entry with discord structure.
+    
+    outdated, the names of the fields have been standardized inside this file.
+    """
     orden = ["head", "frame", "body", "apropos", "notes", "score", "user"]
     intermedio = {}
     for i in orden:
@@ -371,11 +382,41 @@ def display_single_entry(entry):
                 ])
     return parte
 
+def display_succint(entry):
+    """Simple, display: word [type  :  frame  :  distribution] <newline> definition <newline> fields."""
+
+    # _show_if_exists
+    def _sie(field):
+        if field in entry:
+            out =  entry[field]
+        elif field in ['type', 'frame', 'distribution']:
+            out =  "___"
+        else:
+            out = ""
+        return out
+    longest = max([len(_sie(i)) for i in ['type', 'frame', 'distribution']])
+
+    def _msie(field):
+        return _sie(field).ljust(longest)
+
+    parte = f"{  _sie('word') }\t[ {  _msie('type')}  :  {  _msie('frame') }  :  {  _msie('distribution') } ]\n"
+    parte += f"\t{  _sie('definition') }\n"
+    mmm = _sie('fields')
+    mmm = str(mmm) if mmm != [] else ""
+    parte += (mmm + "\n") if mmm else ""
+    return parte
+
+    
+
+def dse(*args, **argv):
+    """Simple way to change the display function."""
+    return display_succint(*args, **argv)
+
 def display_all_entries(entries):
     """Return all entries to be printed to discord"""
     all_entries = ""
     for entry in entries:
-        all_entries += display_single_entry(entry)
+        all_entries += dse(entry)
     return all_entries
 
 # section insertion
@@ -404,15 +445,39 @@ def monolysis(monomer):
     monobody = mm[1:]
     """
     monoheadSplitRegexp = "(\d+|\w|\||\+)"
-    mm       = monomer.split()
+    mm       = monomer.split(maxsplit=1)
     monohead = re.findall(monoheadSplitRegexp, mm[0])
-    monobody = mm[1:]
+    monobody = [m.strip() for m in mm[1:]]
     return   [monohead] + monobody
+
+def polyheadlysis(monomer):
+    mm = monolysis(monomer)
+    return [mm[0]] + [mm[1].split() if mm[1:] else ""]
 
 def polylysis(polymer):
     """Split the polymer into a list of monomers, split the monomers into their monohead and monobody."""
-    return [monolysis(pm) for pm in hydrolysis(polymer)]
+    pm = hydrolysis(polymer)
+    ph = polyheadlysis(pm.pop(0))
+    return [ph] + [monolysis(pb) for pb in pm]
 
+#
+#def monolysis(monomer):
+    #"""Split a monomer into its parts: a monohead and a monobody.
+    #
+    #":q10 tem ble que" -> [[q, 10],   tem, ble, que]
+    #monohead = mm[0]
+    #monobody = mm[1:]
+    #"""
+    #monoheadSplitRegexp = "(\d+|\w|\||\+)"
+    #mm       = monomer.split()
+    #monohead = re.findall(monoheadSplitRegexp, mm[0])
+    #monobody = mm[1:]
+    #return   [monohead] + monobody
+#
+#def polylysis(polymer):
+    #"""Split the polymer into a list of monomers, split the monomers into their monohead and monobody."""
+    #return [monolysis(pb) for pb in hydrolysis(polymer)]
+#
 fields = {
     "w"     : "word",
     "f"     : "frame",      # todo
@@ -497,7 +562,8 @@ def interpret(cliString):
     number_of_results = int(numbers_in_terminal[0]) if numbers_in_terminal else 0
 
     if polyheadcentral == 'q':
-        query_result = query_exe(mymkqlist(polybody, midict), dictionaries)
+        mkql = mymkqlist(polybody, midict)
+        query_result = query_exe(mkql, dictionaries)
         if 'l' in polyheadterminal:
             out = str(len(query_result))
         else:
@@ -513,7 +579,7 @@ def interpret(cliString):
 
 def main(cliString):
     """Return a string of results for the cliString query."""
-    res = interpret(cliString)
+    res = translate_qlist(interpret(cliString))
     if res:
         ret = display_all_entries(res)
     else:
