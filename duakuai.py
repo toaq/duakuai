@@ -1,77 +1,93 @@
+
+# section imports
+
 from   tinydb    import TinyDB, Query, where
 from   unidecode import unidecode
+from   time      import sleep
+from   copy      import deepcopy
 from   time      import sleep
 
 import sys
 import re
-# TODO
+import builtins
 
-TODO = {
-        1:["recursive word search",
-            "not done",
-            "given a compound word, return 1. its definition, 2. the definitions of all the rhythms of its syllables",
-            "heigaheu -> heiga, gaheu -> hei, ga, heu"],
-        2:["intuitive flags",
-            "not done",
-            "the flags right not follow the names of the fields in td.json. They should move to intuitive names",
-            "-h becomes -w (not head, but word)"],
-        3:["multi json search",
-            "not done",
-            "keep multiple json files to search words, each an independent dictionary",
-            "like, td.json and dictionary.json from hoemai's new dictionary",
-            "the intuitive flags would work better with this, because each dictionary woudl have different names for the same field"],
-        3.1:["flag map",
-            "not done",
-            "map intuitive flags with each field in its corresponding database automatically"],
-        4:["help",
-            "not done",
-            "document how to use the app, print the documentation on call",
-            ":q help should return the flags usable, what each flag does, and where they break",
-            "as would :q help -hr"],
-        5:["distributed app",
-            "not done",
-            "make the thing run in several computers, so we don't need a server but we still have the bot as long as one host is logged in"],
-        6:["format indent",
-            "not done",
-            "given any number of sentences, format them in nesting style. ask zeokueqche, he made up the style.",
-            "ok, so, basically, all verbs are upper case, and their argyments are nested like python expressions. isnt it neat? :D"],
-        7:["whole document gloss",
-            "not done",
-            "translate every toaq word in an arbitrarily long document into its one word gloss.",
-            "a gloss is a one word translation, hoemai has them in his new and ~improved~ dictionary. I think they are a good idea."],
-        8:["unicode regexp search",
-            "not done",
-            "search using full unicode, with dotless i and tone marks and all that.",
-            "probalby useful if we keep lots of sentences as examples"],
-        9:["sentence database!",
-            "not done",
-            "keep toaq sentences in a separate database",
-            "would make search easier to code, and cull unnecessary results",
-            "maybe a new table would work better?... NAH! ALL THE DATABASES ARE BELONG TO US!!"],
+def print(*args, **argv):
+    builtins.print(*args, **argv)
+    builtins.print()
 
+# section TODO
 
+TODO = \
+"""
+recursive word search,
+    not done,
+    given a compound word, return 1. its definition, 2. the definitions of all the rhythms of its syllables,
+    heigaheu -> heiga, gaheu -> hei, ga, heu,
+intuitive flags,
+    yes done,
+    the flags right not follow the names of the fields in td.json. They should move to intuitive names,
+    -h becomes -w (not head, but word),
+multi json search,
+    yes done,
+    keep multiple json files to search words, each an independent dictionary,
+    like, td.json and dictionary.json from hoemai's new dictionary,
+    the intuitive flags would work better with this, because each dictionary woudl have different names for the same field,
+flag map,
+    yes done,
+    map intuitive flags with each field in its corresponding database automatically,
+help,
+    not done,
+    document how to use the app, print the documentation on call,
+    :q help should return the flags usable, what each flag does, and where they break,
+    as would :q help -hr,
+distributed app,
+    not done,
+    make the thing run in several computers, so we don't need a server but we still have the bot as long as one host is logged in,
+format indent,
+    not done,
+    given any number of sentences, format them in nesting style. ask zeokueqche, he made up the style.,
+    ok, so, basically, all verbs are upper case, and their argyments are nested like python expressions. isnt it neat? :D,
+whole document gloss,
+    not done,
+    translate every toaq word in an arbitrarily long document into its one word gloss.,
+    a gloss is a one word translation, hoemai has them in his new and ~improved~ dictionary. I think they are a good idea.,
+unicode regexp search,
+    not done,
+    search using full unicode, with dotless i and tone marks and all that.,
+    probalby useful if we keep lots of sentences as examples,
+sentence database!,
+    not done,
+    keep toaq sentences in a separate database,
+    would make search easier to code, and cull unnecessary results,
+    maybe a new table would work better?... NAH! ALL THE DATABASES ARE BELONG TO US!!,
 
-            
-        "infinity":"nothing"
-        }
-
-# Glossary
-
-Glossary = \
-"""consult: apply a qlist to a db
-qlist: a list of queries, only useful after compression.
-compress: turn a qlist into a single query
-syllable: a toaq syllable, often a root word with a definition. That is, semantically relevant.
-palabra, word: the value being searched
-db, database: a list of entries, or the original dictionary of entries as read from the json
-entry: a single entry in the dictionary, a set of fields that describe a word and its properties.
 """
 
-# foundation
+# section Glossary
+
+Glossary = \
+"""consult:    apply a qlist to a db
+qlist:         a list of queries, only useful after compression.
+compress:      turn a qlist into a single query
+syllable:      a toaq syllable, often a root word with a definition. That is, semantically relevant.
+palabra, word: the value being searched
+db, database:  a list of entries, or the original dictionary of entries as read from the json
+entry:         a single entry in the dictionary, a set of fields that describe a word and its properties.
+instruction:   which of the highest level operations should the bot do (:q query :i insertion :? whatever your heart desires)
+instruction argument: what comes after the :i but outside any flag. in :ql, l is the instruction argument.
+action:        a single query in a qlist, ready to be collapsed. It is a dict, and has this structure: ['logic', 'field', 'value', 'function']
+'logic':       either and or or
+'field':       any of the fields in the data base
+'value':       the value expected of the field in the database.
+'function':    the comparison function between the value and the field.
+
+"""
+
+# section foundation
 
 "regexp to match single syllables, for splitting words into syllables"
-#syllable = re.compile(r'[^q]{0,2}[aeiouy][aeiouy]?q?', re.IGNORECASE)
-#syllable = re.compile(r'[cs]?[^q]{0,2}[aeiouy][aeiouy]?q?', re.IGNORECASE)
+ #syllable = re.compile(r'[^q]{0,2}[aeiouy][aeiouy]?q?', re.IGNORECASE)
+ #syllable = re.compile(r'[cs]?[^q]{0,2}[aeiouy][aeiouy]?q?', re.IGNORECASE)
 
 syllable  = r'[cs]?'      # c in ch, s in sh
 syllable += r'[^q]{0,2}'  # starting letter (and h in ch, sh)
@@ -81,35 +97,66 @@ syllable += r'q?'         # optional ending q
 syllable  = re.compile(syllable, re.IGNORECASE)
 
 "load the database"
-tq   = TinyDB("td.json")
+class AdaptibleDB(TinyDB):
 
-# Dumb, uneccesary, ignorable
-# these functions I made long before I had any idea what I was doing,
-# they are not used in the rest of the code, but they might be useful for debugging.
-# just ignore them
+    def __init__(self, json_file, adapt_dictionary):
+        self.adapt_dictionary = adapt_dictionary
+        super().__init__(json_file)
 
-dumb_query = Query()
+    def adapt(self, qlist):
+        quicky = [] #deepcopy(qlist)
+        for entry in qlist:
+            entry = deepcopy(entry)
+            testin = self.adapt_dictionary[entry['field']]
+            if testin:
+                entry['field'] = self.adapt_dictionary[entry['field']]
+                quicky.append(entry)
+        return quicky
 
-def reTest(val, target=syllable):
-    """Dumb Test, true if it fits into toaq syllable structure."""
-    return target.match(unidecode(val))
+toaduaDic = {
+    "word":"head",
+    "frame":"frame",      # todo
+    "keywords":"keywords",    # todo
+    "id":"id",
+    "definition":"body",
+    "user":"user",
+    "scope":"scope",      # language the entry is written in
+    "votes":"votes",
+    "score":"score",
+    "notes":"notes",
+    "type":"",
+    "gloss":"gloss",
+    "distribution":"",
+    "namesake":"",
+    "examples":"",
+    "fields":""
+    }
 
-def unary():
-    """Dumb Test, return all entries that match toaq syllables."""
-    return tq.search(dumb_query.head.test(reTest))
+hoemaiDic = {
+    "word":"toaq",
+    "frame":"frame",      # todo
+    "keywords":"keywords",    # todo
+    "id":"",
+    "definition":"english",
+    "user":"",
+    "scope":"",      # language the entry is written in
+    "votes":"",
+    "score":"",
+    "notes":"notes",
+    "type":"type",
+    "gloss":"gloss",
+    "distribution":"distribution",
+    "namesake":"namesake",
+    "examples":"examples",
+    "fields":"fields"
+}
 
-def extract_symbols():
-    """Dumb, get all unique symbols in the database for the words."""
-    database = unary()
-    _words = [a['head'] for a in database]
-    _small = sorted(list(set([a for a in "".join(_words)])))
-    return _small
 
-def sk(test, target):
-    """Find all that match the target through the test."""
-    return tq.search(dumb_query.head.test(test, target))
+#tq   = TinyDB("td.json")
+tqa  = AdaptibleDB("td.json", toaduaDic)
+hoe  = AdaptibleDB("dictionary.json", hoemaiDic)
 
-# order results
+# section order results
 
 def chop(val, regexp=syllable):
     """Split a word into syllables.
@@ -166,28 +213,10 @@ def ordena(entry_list, field, sylla):
         return [num, chp]
     return sorted(list(entry_list), key=_sortBy)
 
-# examples of query list
-# query list, data base
-# query list: [[logic, field, value, test], ... ]
+def mycompressQuery(qlist):
+    """join all queries into one gigaquery.
 
-# elements to the left take precedence to elements on the right
-aqlist = [
-        ['empty', 'head', 'mui', lambda f, v: re.compile(v).match(f)], 
-        ['and', 'body', 'predicate', lambda f, v: v in f],
-        ['or', 'user', 'spreadsheet', lambda f, v: re.compile(v).match(f)]
-        ]
-
-bqlist = [
-        ['empty', 'head', 'kuo', ssrch],
-        ['and', 'body', 'predicate', simple_substring],
-        ['or', 'user', 'Ilmen', equality]
-        ]
-
-
-def compressQuery(qlist):
-    """Join all queries into one GigaQuery.
-
-    How does it work?
+    how does it work?
     first,  reverse the queries in the query list
     second, fuse all the queries by nesting them, from rightmost to leftmost, like a b c d -> (a (b (c d)))
     """
@@ -195,6 +224,7 @@ def compressQuery(qlist):
     # this does not fit with the application of query, so the list must be reversed appropriately
 
     # 1a 2b 3c 4d -> 4d c3 b2 a1
+    qlist = [[a['logic'], a['field'], a['value'], match_fun_list[a['match_fun']]] for a in qlist]
     def _reorder(qlist):
         return list(reversed(qlist))
     lst = [[l, where(f).test(t, v)] for l, f, v, t in qlist]
@@ -216,13 +246,14 @@ def compressQuery(qlist):
 
 def consult(qlist, db):
     """Apply the query of the compressed qlist onto the db."""
-    uberQuery = compressQuery(qlist)
+    uberQuery = mycompressQuery(qlist)
+    #print(uberQuery)
     return db.search(uberQuery)
 
-# organize by meaningful syllable
-# TODO organize by more than one syllable
-# sort consult, or cyllable consult
-def sconsult(qlist, db=tq):
+ # organize by meaningful syllable
+ # TODO organize by more than one syllable
+ # sort consult, or cyllable consult
+def sconsult(qlist, db):
     """Consult the compressed qlist onto the db, sorting them by the syllable order.
 
     I wanna sort the results by syllable, because syllables have meaning,
@@ -238,28 +269,37 @@ def sconsult(qlist, db=tq):
     for q in qlist:
         if cnt > 1:
             break
-        if 'head' in q:
+        if q['field'] == 'word':
             cnt += 1
-            give_head = q[2]
-    return ordena(consult(qlist, db), 'head', give_head)
+            give_head = q['value']
+    qlist = db.adapt(qlist)
+    sort_field = db.adapt_dictionary['word']
+    return ordena(consult(qlist, db), sort_field, give_head)
 
 
+# all these functions take a field value and a string, and return true if the string matches the field
 # regexp search
 def rsrch(field, regexp):
-    """TODO """
+    """See if the regexp matches the value given for the field."""
     return re.compile(regexp, re.IGNORECASE).match(field)
 
 # vanilla regexp search
 def vrsrch(field, regexp):
-    field, regexp = unidecode(field), unidecode(regexp)
-    return re.compile(regexp, re.IGNORECASE).match(field)
+    """Match without special characters.
 
+    turn both the field value and the regexp into plain ascii before performing the match.
+    """
+    field, regexp = unidecode(field), unidecode(regexp)
+    return rsrch(field, regexp)
+
+# regular search
 def srch(field, palabra):
     """Search for words that contain palabra anywhere within them."""
     field, palabra = unidecode(field), unidecode(palabra)
     regexp = ".*" + palabra + ".*"
     return rsrch(field, regexp)
 
+# syllable search
 def ssrch(field, palabra):
     """Return only words that contain palabra as a meaningful syllable.
 
@@ -276,6 +316,7 @@ def simple_substring(field, palabra):
     return palabra in field
 
 def equality(field, palabra):
+    """The field is the same as palabra"""
     return palabra == field
 
 match_fun_list = {
@@ -286,14 +327,16 @@ match_fun_list = {
 
         }
 
-# display
+# section display
 
 def see(db):
+    """Print all words in the entries."""
     for i in db:
         print(i['head'], end="  ")
         #sleep(1)
 
 def display(entry):
+    """A very clumsy display of a full entry."""
     orden = ["head", "frame", "body", "apropos", "notes", "score"]
     print(entry[orden[0]]) #, "\t", entry[orden[1]])
     for o in orden[2:]:
@@ -301,10 +344,12 @@ def display(entry):
             print("\t", o[0], entry[o])
 
 def results(db, number):
+    """A clumsy display of all entries in a result."""
     for entry in db[:number]:
         display(entry)
 
 def display_single_entry(entry):
+    """Return string that represents entry with discord structure."""
     orden = ["head", "frame", "body", "apropos", "notes", "score", "user"]
     intermedio = {}
     for i in orden:
@@ -327,182 +372,154 @@ def display_single_entry(entry):
     return parte
 
 def display_all_entries(entries):
+    """Return all entries to be printed to discord"""
     all_entries = ""
     for entry in entries:
         all_entries += display_single_entry(entry)
     return all_entries
 
-# insertion
+# section insertion
 
 def inserta(**entry):
+    """Unfinished insertion into dictionary function."""
     if 'head' in entry and 'body' in entry:
         tq.insert(entry)
 
-# cli
+# section cli
 
-tests = [
-        ":q -hr agatha -f sa -a gaslight fantasy -d girl genious",
-        ":i word -f lu -d questionable content ___. ___ dumbing ___.",
-        ":bw",
-        ":b",
-        ":bm index -f lu -a+ bitter sweet candy bowl",
-        ":h q"
-        ]
+# glossary: hydrolysis=split a cliString into its parts. monomer=part of a clistring. polymer=a clistring. monolysis=split a monomer. polymers are split into monomers. the results of a polymer inside a function are called pm. the results of a monomer inside a function are called mm. this comes form the first letter of each syllable in the word. polydict=the dictionary to parse the flag inputs. central=the first letter of a flag, representing the field, -hr| word, h is the central.
 
-def pieces(command):
-    return [p.split() for p in command.split('-')]
+def hydrolysis(polymer):
+    """Split a cli string into its query parts.
 
-# pcommand - pieces command
-# TODO change names of comma and comm and com1, they are all ugly as fuck
-def parse(pcommand):
-    """Return a representation of everything that must be done.
-
-    [instruction, {action}, {action},...]
-    instruction = all in comma dict
-    action = {'logic':('and'/'or), 'field':all-in-the-dict-fields, 'value':what will be searched, 'match_fun':how to idenrify it}
+    "ql -h word -d definition" -> ["ql", "h word", "d definition"]
     """
-    # commands = q, qU, i, iU, bw, bu, bm, h
-    comma = {
-            "q"     : "query",
-            "i"     : "insert", # TODO
-            "b"     : "buffer", # TODO
-            "h"     : "help"    # TODO
-            }
+    return polymer.split('-')
 
-    queryModifiers = {
-            "l"     : "length",
-            "A"     : "all"
-            }
-
-    commaPlus = {
-            "w"     : "write",  # TODO
-            "u"     : "undo",   # TODO
-            "m"     : "modify", # TODO
-            "U"     : "unicode support" # TODO
-            }
-
-    # flags = h, hr, hs, f, a, a+, i, b, b+, u, l, v+, s, n, n+
-    # flags = h|, f|, i|, ..., hr|, hs|, ..., br|, ...
-    fields = {
-            "h"     : "head",
-            "f"     : "frame",      # TODO
-            "a"     : "apropos",    # TODO
-            "i"     : "id",
-            "b"     : "body",
-            "u"     : "user",
-            "l"     : "scope",      # language the entry is written in
-            "v"     : "votes",
-            "s"     : "score",
-            "n"     : "notes"
-            }
-
-    fieldsLogic = {
-            "|"     : "or"
-            }
-
-    fieldsSearch = {
-            "r"     : "regexp",
-            "s"     : "syllable"
-            }
-
-    fieldsModify = {
-            "+"     : "append"  # TODO
-            }
-
-
-    def _interpret_flag(flag):
-        lst = [l for l in flag]
-        action = {}
-        action['field'] = fields[lst.pop(0)]
-        for l in lst:
-            if l in fieldsLogic:
-                action['logic'] = fieldsLogic[l]
-            elif l in fieldsSearch:
-                action['match_fun'] = fieldsSearch[l]
-            else:
-                raise Exception('unrecognized flag')
-        return action
+def monolysis(monomer):
+    """Split a monomer into its parts: a monohead and a monobody.
     
-    def _defaults(action):
-        if not 'logic' in action:
-            action['logic'] = 'and'
-        if not 'match_fun' in action:
-            action['match_fun'] = 'simple'
-        return action
+    ":q10 tem ble que" -> [[q, 10],   tem, ble, que]
+    monohead = mm[0]
+    monobody = mm[1:]
+    """
+    monoheadSplitRegexp = "(\d+|\w|\||\+)"
+    mm       = monomer.split()
+    monohead = re.findall(monoheadSplitRegexp, mm[0])
+    monobody = mm[1:]
+    return   [monohead] + monobody
 
-    def _complete(action, value):
-        action['value'] = value
-        return action
+def polylysis(polymer):
+    """Split the polymer into a list of monomers, split the monomers into their monohead and monobody."""
+    return [monolysis(pm) for pm in hydrolysis(polymer)]
 
-    def _come_together(flag, value):
-        return _complete(_defaults(_interpret_flag(flag)), value)
+fields = {
+    "w"     : "word",
+    "f"     : "frame",      # todo
+    "k"     : "keywords",    # todo
+    "i"     : "id",
+    "d"     : "definition",
+    "u"     : "user",
+    "s"     : "scope",      # language the entry is written in
+    "v"     : "votes",
+    "r"     : "score",
+    "n"     : "notes",
+    "y"     : "type",
+    "g"     : "gloss",
+    "i"     : "distribution",
+    "a"     : "namesake",
+    "e"     : "examples",
+    "l"     : "fields"
+    }
 
+fieldslogic = {
+        "|"     : ('logic', "or")
+        }
 
-    comm = pieces(pcommand)
-    #com1 = [(flag, palabra, _come_together(flag, palabra)) for flag, palabra in comm[1:]]
+fieldssearch = {
+        "r"     : ("match_fun", "regexp"),
+        "s"     : ("match_fun", "syllable")
+        }
+
+fieldsmodify = {
+        "+"     : "append"  # todo
+        }
+
+midict = {}
+midict['central'] = fields
+
+midict['terminal'] = {}
+midict['terminal'].update(fieldslogic)
+midict['terminal'].update(fieldssearch)
+midict['terminal'].update(fieldsmodify)
+
+def mkquery(monomere, reference):
+    [[central, *terminal], *monobody] = monomere
+    word = monobody[0]
+    dick = {}
     try:
-        com1 = [_come_together(flag, palabra) for flag, palabra in comm[1:]]
-    except ValueError:
-        raise Exception('value missing')
+        dick['field'] = reference['central'][central]
+        dick['value'] = word
+        for t in terminal:
+            tt = reference['terminal'][t]
+            dick[tt[0]] = tt[1]
+    except Exception as e:
+        raise e
+    return dick
 
-    # instr is a string of the form :q[l|10]
-    # TODO ugly access, gotta parse the instr prettier
-    def _parse_instruction(instr):
-        instr = instr[1:]
-        ins = instr[0]
-        #print(ins, instr)
-        lst = [comma[ins]]
-        if instr[1:]:
-            if instr[1] in queryModifiers:
-                lst.append(queryModifiers[instr[1]])
-            else:
-                lst.append(instr[1:])
-            # ['query', 'length' or number of results]
-        else:
-            lst.append('3')
-        return lst
+def queryDefaults(action):
+    """Fill the categories missing from mkquery with their default values."""
+    if not 'logic' in action:
+        action['logic'] = 'and'
+    if not 'match_fun' in action:
+        action['match_fun'] = 'simple'
+    return action
 
-    instruction = comm[0][0]
-
-    #print(instruction)
-    def _right_now_over_me(inst, commands):
-        return [_parse_instruction(inst)] + commands
-
-    return _right_now_over_me(instruction, com1)
-
-def mkqlist(actionList):
-    compiled = [[a['logic'], a['field'], a['value'], match_fun_list[a['match_fun']]] for a in actionList]
+def mymkqlist(polybody, reference):
+    """Take all the actions that result from parsing a command, and turn each into a query that can can be joined by compressQuery."""
+    compiled = [queryDefaults(mkquery(a, reference)) for a in polybody]
     return compiled
 
-def compile_execute(parse_list):
-    whatado = parse_list.pop(0)
-    if 'query' in whatado:
-        result = sconsult(mkqlist(parse_list))
-        mod = whatado[1]
-        lngth = len(result)-1
-        if 'length' == mod:
-            return len(result)
-        elif 'all' == mod:
-            return result
+def query_exe(qlist, dblist=[tqa]):
+    fullresult = []
+    #print(qlist)
+    for db in dblist:
+        fullresult.extend(sconsult(qlist, db))
+    return fullresult
+
+# central, terminal
+def interpret(cliString):
+    dictionaries = [tqa, hoe]
+    pm = polylysis(cliString)
+    [[[polyheadcentral, *polyheadterminal], *polyheadbody], *polybody] = pm
+
+    numbers_in_terminal = re.findall('\d+', "".join(polyheadterminal))
+    number_of_results = int(numbers_in_terminal[0]) if numbers_in_terminal else 0
+
+    if polyheadcentral == 'q':
+        query_result = query_exe(mymkqlist(polybody, midict), dictionaries)
+        if 'l' in polyheadterminal:
+            out = str(len(query_result))
         else:
-            mod = int(mod)
-            mod = mod if mod < lngth else lngth
-            return result[:mod]
-
-
-def execute_command(cliString):
-    return compile_execute(parse(cliString))
-
-# message discord
+            if 'A' in polyheadterminal:
+                out = query_result
+            elif number_of_results:
+                out = query_result[:number_of_results]
+            else:
+                out = query_result[:3]
+        return out
+         
+    return ""
 
 def main(cliString):
-    return display_all_entries(execute_command(cliString))
-
-
-
-
+    """Return a string of results for the cliString query."""
+    res = interpret(cliString)
+    if res:
+        ret = display_all_entries(res)
+    else:
+        ret = "unknown function"
+    return ret
 
 
 if __name__ == "__main__":
     print(main(sys.argv[1]))
-    
