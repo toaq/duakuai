@@ -7,6 +7,8 @@ from   time      import sleep
 from   copy      import deepcopy
 from   time      import sleep
 
+import random as rd
+
 import sys
 import re
 import builtins
@@ -163,6 +165,11 @@ def translate_qlist(qlist):
 #tq   = TinyDB("td.json")
 tqa  = AdaptibleDB("td.json", toaduaDic)
 hoe  = AdaptibleDB("dictionary.json", hoemaiDic)
+
+filesDic = {
+    "offi" : hoe,
+    "comm" : tqa
+}
 
 # section order results
 
@@ -325,13 +332,15 @@ def simple_substring(field, palabra):
 
 def equality(field, palabra):
     """The field is the same as palabra"""
+    field, palabra = unidecode(field), unidecode(palabra)
     return palabra == field
 
 match_fun_list = {
         'regexp': vrsrch,
         'syllable': ssrch,
         'simple': srch, # TODO simple_substring
-        'dictionary': srch
+        'dictionary': srch,
+        'exact': equality
 
         }
 
@@ -503,7 +512,8 @@ fieldslogic = {
 
 fieldssearch = {
         "r"     : ("match_fun", "regexp"),
-        "s"     : ("match_fun", "syllable")
+        "s"     : ("match_fun", "syllable"),
+        "e"     : ("match_fun", "exact")
         }
 
 fieldsmodify = {
@@ -552,14 +562,21 @@ def query_exe(qlist, dblist=[tqa]):
         fullresult.extend(sconsult(qlist, db))
     return fullresult
 
+def which_dic(polyheadbody):
+    if polyheadbody:
+        return [filesDic[f] for f in polyheadbody]
+    return [hoe, tqa] # default
+
 # central, terminal
 def interpret(cliString):
-    dictionaries = [tqa, hoe]
     pm = polylysis(cliString)
-    [[[polyheadcentral, *polyheadterminal], *polyheadbody], *polybody] = pm
+    [[[polyheadcentral, *polyheadterminal], polyheadbody], *polybody] = pm
 
     numbers_in_terminal = re.findall('\d+', "".join(polyheadterminal))
     number_of_results = int(numbers_in_terminal[0]) if numbers_in_terminal else 0
+
+    #dictionaries = [hoe, tqa] # which files to search, in what order
+    dictionaries = which_dic(polyheadbody)
 
     if polyheadcentral == 'q':
         mkql = mymkqlist(polybody, midict)
@@ -573,17 +590,25 @@ def interpret(cliString):
                 out = query_result[:number_of_results]
             else:
                 out = query_result[:3]
+            out = display_all_entries(translate_qlist(out))
         return out
          
     return ""
 
 def main(cliString):
     """Return a string of results for the cliString query."""
-    res = translate_qlist(interpret(cliString))
-    if res:
-        ret = display_all_entries(res)
-    else:
-        ret = "mistery error number 69 :3"
+    try:
+        res = interpret(cliString)
+        if res:
+            if re.compile("\d+").match(res):
+                ret = res
+            else:
+                ret = res
+        else:
+            phrases = ["¯\_(ツ)_/¯"]
+            ret = rd.choice(phrases)
+    except e:
+        ret = ">~< cough (xAx)" + e
     return ret
 
 
