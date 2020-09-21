@@ -365,36 +365,11 @@ def results(db, number):
     for entry in db[:number]:
         display(entry)
 
-def display_single_entry(entry):
-    """Return string that represents entry with discord structure.
-    
-    outdated, the names of the fields have been standardized inside this file.
-    """
-    orden = ["head", "frame", "body", "apropos", "notes", "score", "user"]
-    intermedio = {}
-    for i in orden:
-        if i in entry:
-            val = entry[i]
-        else:
-            val = ""
-        intermedio[i] = val
-    parte = "".join(
-            [
-                f"{intermedio['head']}\tframe: {intermedio['frame']}\n",
-                f"\tbody:\t{intermedio['body']}\n",
-                #f"\tapropos:\t{intermedio['apropos']}\n",
-                #f"\tnotes:\t{intermedio['notes']}\n",
-                #f"\tscore:\t{intermedio['score']}\n"
-                f"\tuser:\t{intermedio['user']}\n"
-                
-                ""
-                ])
-    return parte
+def display_conditional(entry, fields):
+    """."""
 
-def display_succint(entry):
-    """Simple, display: word [type  :  frame  :  distribution] <newline> definition <newline> fields."""
+    fies = ["word", "type", "frame", "distribution"]
 
-    # _show_if_exists
     def _sie(field):
         if field in entry:
             out =  entry[field]
@@ -408,24 +383,22 @@ def display_succint(entry):
     def _msie(field):
         return _sie(field).ljust(longest)
 
-    parte = f"{  _sie('word') }\t[ {  _msie('type')}  :  {  _msie('frame') }  :  {  _msie('distribution') } ]\n"
-    parte += f"\t{  _sie('definition') }\n"
-    mmm = _sie('fields')
-    mmm = str(mmm) if mmm != [] else ""
-    parte += (mmm + "\n") if mmm else ""
-    return parte
-
-    
+    l1 = "{}\t[{} : {} : {}]\n".format(*[_sie(f) for f in fies])
+    lN = ""
+    for f in fields:
+        if f not in fies:
+            lN += "\t{}\n".format(_sie(f))
+    return l1 + lN
 
 def dse(*args, **argv):
     """Simple way to change the display function."""
-    return display_succint(*args, **argv)
+    return display_conditional(*args, **argv)
 
-def display_all_entries(entries):
+def display_all_entries(entries, fields):
     """Return all entries to be printed to discord"""
     all_entries = ""
     for entry in entries:
-        all_entries += dse(entry)
+        all_entries += dse(entry, fields)
     return all_entries
 
 # section insertion
@@ -461,7 +434,7 @@ def monolysis(monomer):
 
 def polyheadlysis(monomer):
     mm = monolysis(monomer)
-    return [mm[0]] + [mm[1].split() if mm[1:] else ""]
+    return [mm[0]] + [mm[1].split() if mm[1:] else []]
 
 def polylysis(polymer):
     """Split the polymer into a list of monomers, split the monomers into their monohead and monobody."""
@@ -469,24 +442,6 @@ def polylysis(polymer):
     ph = polyheadlysis(pm.pop(0))
     return [ph] + [monolysis(pb) for pb in pm]
 
-#
-#def monolysis(monomer):
-    #"""Split a monomer into its parts: a monohead and a monobody.
-    #
-    #":q10 tem ble que" -> [[q, 10],   tem, ble, que]
-    #monohead = mm[0]
-    #monobody = mm[1:]
-    #"""
-    #monoheadSplitRegexp = "(\d+|\w|\||\+)"
-    #mm       = monomer.split()
-    #monohead = re.findall(monoheadSplitRegexp, mm[0])
-    #monobody = mm[1:]
-    #return   [monohead] + monobody
-#
-#def polylysis(polymer):
-    #"""Split the polymer into a list of monomers, split the monomers into their monohead and monobody."""
-    #return [monolysis(pb) for pb in hydrolysis(polymer)]
-#
 fields = {
     "w"     : "word",
     "f"     : "frame",      # todo
@@ -567,16 +522,51 @@ def which_dic(polyheadbody):
         return [filesDic[f] for f in polyheadbody]
     return [hoe, tqa] # default
 
+def which_fie(polyheadbody):
+    if polyheadbody:
+        return polyheadbody
+    return ["definition"]
+
+
+def fill_phb(phb):
+    phb = phb.copy()
+    if phb:
+        if len(phb) == 1:
+            if phb[0].startswith("d"):
+                phb.append("f")
+            else:
+                phb.append("d")
+    else:
+        phb.append("f")
+        phb.append("d")
+    return phb
+
+def parse_phb(phb):
+
+    one = phb[0].split('+')
+    two = phb[1].split('+')
+    if one[0] == "d":
+        dicks = one[1:]
+        fields = two[1:]
+    else:
+        dicks = two[1:]
+        fields = one[1:]
+    return dicks, fields
+
+
+
 # central, terminal
 def interpret(cliString):
     pm = polylysis(cliString)
     [[[polyheadcentral, *polyheadterminal], polyheadbody], *polybody] = pm
 
     numbers_in_terminal = re.findall('\d+', "".join(polyheadterminal))
-    number_of_results = int(numbers_in_terminal[0]) if numbers_in_terminal else 0
+    number_of_results = int(numbers_in_terminal[0]) if numbers_in_terminal else 3
 
     #dictionaries = [hoe, tqa] # which files to search, in what order
-    dictionaries = which_dic(polyheadbody)
+    mdicks, mfields = parse_phb(fill_phb(polyheadbody))
+    dictionaries = which_dic(mdicks)
+    fields_to_display = which_fie(mfields)
 
     if polyheadcentral == 'q':
         mkql = mymkqlist(polybody, midict)
@@ -586,13 +576,13 @@ def interpret(cliString):
         else:
             if 'A' in polyheadterminal:
                 out = query_result
-            elif number_of_results:
-                out = query_result[:number_of_results]
             else:
-                out = query_result[:3]
-            out = display_all_entries(translate_qlist(out))
+                out = query_result[:number_of_results]
+            out = display_all_entries(translate_qlist(out), fields_to_display)
         return out
-         
+    elif polyheadcentral == 'h':
+        return "TODO"
+
     return ""
 
 def main(cliString):
@@ -605,12 +595,15 @@ def main(cliString):
             else:
                 ret = res
         else:
-            phrases = ["¯\_(ツ)_/¯"]
+            phrases = ["¯\_(ツ)_/¯ your search came empty"]
             ret = rd.choice(phrases)
-    except e:
-        ret = ">~< cough (xAx)" + e
+    except BaseException as e:
+        ret = ">~< cough (xAx) an error occured"
     return ret
+
+def climain(cliString):
+    print(main(cliString))
 
 
 if __name__ == "__main__":
-    print(main(sys.argv[1]))
+    builtins.print(main(sys.argv[1]))
