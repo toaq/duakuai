@@ -1,0 +1,43 @@
+
+
+
+there are two parts to a query: the head and the body.
+the head is everything between the :q and the first flag.
+the body is all the flags with their arguments
+
+to perform a search, you pass some terms to the query.
+:q -w mai
+:q -d love
+:q -g love
+:q -u solpahi
+these are all valid searches.
+each flag represents a field in the database. Passing an 
+argument to it means that duakuai will return values for that
+field that match the argument.
+
+some fields are:
+  w	word
+  d	definition
+  u	user
+  g	gloss
+  f	frame
+
+the head itself can be modified, to change what the query
+returns, or how many results.
+
+:ql -w mai
+  query list: return how many 
+:q10 -w mai
+:qA -w mai
+
+:q -w mai -u solpahi
+:qA -w mai -u solpahi
+:qA -d| love -d affection
+:qA -dr (love|affec)
+
+:q offi -w mai
+:q comm -w mai
+
+all flags
+all mods
+
