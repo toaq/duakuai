@@ -1,6 +1,4 @@
 
-
-
 there are two parts to a query: the head and the body.
 the head is everything between the :q and the first flag.
 the body is all the flags with their arguments
@@ -35,9 +33,53 @@ returns, or how many results.
 :qA -d| love -d affection
 :qA -dr (love|affec)
 
-:q offi -w mai
-:q comm -w mai
+:q d+offi -w mai
+  search in the official dictionary
+:q d+offi+comm -w mai
+   search in both official and community
+   this is the default behaviour, equivalent to
+   :q -w mai
+:q d+comm -w mai
+   search the community dictionary
+:q f+definition+fields+user -w mai
+   of the answers, show the definition, fields, and user who made the word
 
-all flags
-all mods
+these are the flags you can refer to when looking for a field
+"w"     : "word",
+"f"     : "frame",      # todo
+"k"     : "keywords",    # todo
+"i"     : "id",
+"d"     : "definition",
+"u"     : "user",
+"s"     : "scope",      # language the entry is written in
+"v"     : "votes",
+"r"     : "score",
+"n"     : "notes",
+"y"     : "type",
+"g"     : "gloss",
+"i"     : "distribution",
+"a"     : "namesake",
+"e"     : "examples",
+"l"     : "fields"
 
+these are the modifications to the flags yo can do
+"|"     : ('logic', "or")
+    this searches with or instead of and. that is
+    :q -w| mai -w dua
+    search all entries that have either mai or dua
+
+these define how the value of the field matches with the query
+"r"     : ("match_fun", "regexp"),
+    match the field to a regular expression
+    :qA -wr ^.+mai$
+    will match all words that end with 'mai'
+    regexpes are kinda hard, so you don't need to use this mode
+"s"     : ("match_fun", "syllable"),
+    search for words that contain the exact syllable
+    this is usefull because many words in toaq are compounds of meaningful syllables.
+    :qA -ws du
+    returns all the words with 'du' as opposed to 'dua' or 'dui' 
+"e"     : ("match_fun", "exact")
+    return exact matches
+    :qA -we du
+    this only returns results for the word 'du', nothing about 'dutao' or 'duruaq'

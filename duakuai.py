@@ -581,7 +581,8 @@ def interpret(cliString):
             out = display_all_entries(translate_qlist(out), fields_to_display)
         return out
     elif polyheadcentral == 'h':
-        return "TODO"
+        with open('dkhelp') as hlp:
+            return hlp.read()
 
     return ""
 
